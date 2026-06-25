@@ -1,0 +1,45 @@
+{
+  "name": "enneo-codex",
+  "version": "0.2.0",
+  "description": "Connect Codex to Enneo platform instances for ticket investigation, AI agent development, and platform administration.",
+  "author": {
+    "name": "Enneo",
+    "url": "https://www.enneo.ai"
+  },
+  "homepage": "https://github.com/enneo-AI/codex-plugin",
+  "repository": "https://github.com/enneo-AI/codex-plugin",
+  "license": "Proprietary",
+  "keywords": [
+    "enneo",
+    "customer-service",
+    "ai-agents",
+    "ticketing",
+    "mcp",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Enneo Codex",
+    "shortDescription": "Work with Enneo instances directly from Codex.",
+    "longDescription": "Enneo Codex connects Codex to Enneo customer-service instances. It bundles native MCP tools for setup, profile verification, and ticket investigation, plus Codex skills for tickets, AI agents, customers, events, knowledge, reports, settings, telephony, templates, tags, users, tools, and troubleshooting via the Enneo REST API.",
+    "developerName": "Enneo",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://www.enneo.ai",
+    "privacyPolicyURL": "https://www.enneo.ai/datenschutz",
+    "termsOfServiceURL": "https://www.enneo.ai/impressum",
+    "brandColor": "#0A66C2",
+    "composerIcon": "./assets/enneo-logo.jpeg",
+    "logo": "./assets/enneo-logo.jpeg",
+    "defaultPrompt": [
+      "Connect to my Enneo instance and show my profile.",
+      "Search recent open tickets in Enneo.",
+      "Investigate why an Enneo AI agent skipped a ticket."
+    ]
+  }
+}

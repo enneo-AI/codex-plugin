@@ -1,0 +1,20 @@
+{
+  "name": "enneo",
+  "interface": {
+    "displayName": "Enneo"
+  },
+  "plugins": [
+    {
+      "name": "enneo-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/enneo-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
