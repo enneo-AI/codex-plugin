@@ -14286,7 +14286,7 @@ function text(value) {
 
 // dist/index.js
 var server = new Server({
-  name: "@enneo/mcp-server",
+  name: "@enneo/codex-mcp-server",
   version: "0.1.0"
 }, {
   capabilities: { tools: {} }
@@ -14313,9 +14313,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("[enneo-mcp] server ready");
+  console.error("[enneo-codex-mcp] server ready");
 }
 main().catch((err) => {
-  console.error("[enneo-mcp] fatal:", err);
+  console.error("[enneo-codex-mcp] fatal:", err);
   process.exit(1);
 });

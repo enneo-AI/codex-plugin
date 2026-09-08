@@ -1,11 +1,11 @@
 {
-  "name": "@enneo/mcp-server",
+  "name": "@enneo/codex-mcp-server",
   "version": "0.1.0",
   "description": "MCP server for the Enneo platform — exposes profile and ticket tools using the user's Enneo API key/JWT.",
   "license": "UNLICENSED",
   "type": "module",
   "bin": {
-    "enneo-mcp-server": "dist/index.js"
+    "enneo-codex-mcp-server": "dist/index.js"
   },
   "files": ["dist"],
   "scripts": {

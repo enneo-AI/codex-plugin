@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "enneo": {
+    "enneo-codex": {
       "command": "node",
       "args": [
         "./mcp-server/bundle/index.js"
