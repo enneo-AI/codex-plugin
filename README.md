@@ -27,5 +27,5 @@ The plugin itself lives in [`plugins/enneo-codex`](plugins/enneo-codex).
 
 - The bundled MCP server is committed at `plugins/enneo-codex/mcp-server/bundle/index.js`.
 - Rebuild it with `cd plugins/enneo-codex/mcp-server && npm install && npm run bundle`.
-- Auth mirrors the Claude Code plugin: users copy the API key/JWT from Profile Settings and the plugin stores it locally in `~/.enneo/env`.
+- Auth mirrors the Claude Code plugin: users mint a named API key in Profile Settings (Login → API keys) and the plugin stores it locally in `~/.enneo/env`.
 - No OAuth client registration is required for this Codex variant.

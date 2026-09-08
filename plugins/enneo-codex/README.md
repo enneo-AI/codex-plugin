@@ -43,7 +43,7 @@ Flow:
 
 1. Run `enneo_configure` with the instance hostname.
 2. Open `https://<instance>/settings/profile`.
-3. Copy the API key from the Login section.
+3. Open **API keys** from the **Login** section, create a named key, and copy it. Enneo shows the value only once.
 4. Ask Codex to store it for the Enneo Codex plugin. Codex will use `enneo_store_token`.
 5. Run `enneo_profile_me` to verify the connection.
 
