@@ -115,7 +115,7 @@ AUTH="Authorization: Bearer ${ENNEO_TOKEN}"
 
 # List the keys on a profile — the key itself is never returned, only its last characters
 curl -s "${BASE}/jwt/{profileId}/keys" -H "${AUTH}" \
-  | jq '.keys[] | {id, name, tokenSuffix, createdAt, expiresAt, lastUsedAt, revokedAt, issuedBy}'
+  | jq '.keys[] | {id, name, tokenSuffix, createdAt, expiresAt, lastUsedAt, revokedAt, revokedBy, issuedBy}'
 
 # Mint a named key (REQUIRES CONFIRMATION) — the response is the only time the value is shown
 curl -s -X POST "${BASE}/jwt/{profileId}" \
