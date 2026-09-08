@@ -5,6 +5,7 @@
       "args": [
         "./mcp-server/bundle/index.js"
       ],
+      "cwd": "./",
       "startup_timeout_sec": 120
     }
   }
