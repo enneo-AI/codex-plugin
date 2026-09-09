@@ -44,11 +44,19 @@ More tools will be added, matching the capabilities documented in the plugin's s
 
 ```bash
 cd mcp-server
-npm install
-npm run build
-npm start   # runs on stdio — for manual testing, use an MCP client
+npm install          # `prepare` rebuilds the bundle for you
+npm run bundle       # tsc -> dist/, then esbuild -> bundle/index.js
+npm start            # runs on stdio — for manual testing, use an MCP client
 ```
+
+`dist/` is a build intermediate and is gitignored. **`bundle/index.js` is the shipped
+artifact and must be committed** — commit it whenever `src/` or a dependency changes.
+`npm install` regenerates it, so a stale bundle shows up in `git status`.
 
 ## Distribution
 
-The Codex plugin ships a bundled `mcp-server/bundle/index.js` so customer installations do not need `npm install`.
+The Codex plugin ships a bundled `mcp-server/bundle/index.js` so customer installations do
+not need `npm install`. A plugin install is a plain checkout with no install step, so the
+server cannot rely on `node_modules/` existing at runtime — everything it imports
+(`@modelcontextprotocol/sdk`, `zod`) is inlined into the bundle by esbuild. That is also why
+`.mcp.json` must never point at `dist/`.
