@@ -24,12 +24,6 @@ Use the Enneo Codex plugin. Connect to <instance>.enneo.ai and show my profile.
 
 ## Auth
 
-Flow:
+Run `enneo_configure` for the instance without `reset`, then `enneo_profile_me` to reuse an existing key. If none is stored, enter an existing API key for that instance directly in `~/.enneo/env` using your local editor, with mode `600`. Keep the secret out of chat and assistant tool arguments.
 
-1. Run `enneo_configure` with the instance hostname.
-2. Open `https://<instance>.enneo.ai/settings/profile`.
-3. Open **API keys** from the **Login** section, create a named key, and copy it. Enneo shows the value only once.
-4. Ask Codex to store it for the Enneo Codex plugin. Codex will use `enneo_store_token`.
-5. Run `enneo_profile_me` to verify the connection.
-
-Tokens are stored in `~/.enneo/env` with mode `600`. Never paste or print a token after setup.
+Only create a key in **Profile Settings → Login → API keys** if no usable key is available. The plugin has one active instance/key and never performs OAuth or automatic renewal. See the [full setup, switching and migration instructions](plugins/enneo-codex/README.md#auth).

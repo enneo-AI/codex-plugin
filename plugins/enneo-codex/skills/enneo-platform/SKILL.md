@@ -14,12 +14,12 @@ Prefer the bundled Enneo MCP tools whenever they cover the task:
 | Tool | Purpose |
 |------|---------|
 | `enneo_configure` | Select the instance hostname, e.g. `demo.enneo.ai`. |
-| `enneo_store_token` | Store the API key/JWT minted in Enneo Profile Settings. |
+| `enneo_store_token` | Store a key only when the user explicitly chooses to provide it through this tool. |
 | `enneo_profile_me` | Verify the current user/profile. |
 | `enneo_ticket_search` | Search tickets with filters. |
 | `enneo_ticket_get` | Fetch full ticket data. |
 
-Authentication mirrors the Claude Code plugin: configure the instance, ask the user to mint an API key at `https://<instance>/settings/profile`, store it with `enneo_store_token`, then verify with `enneo_profile_me`. Credentials are stored in `~/.enneo/env`.
+Authentication uses an existing profile API key/JWT in `~/.enneo/env`. Configure the requested instance without `reset`, then call `enneo_profile_me` to reuse the stored key. A successful call completes setup. There is no OAuth flow or automatic key renewal.
 
 `enneo_ticket_get` sends neither `includeCustomer` nor `includeIntents`, so its result omits both regardless of what its description says — fall back to curl when you need them.
 
@@ -50,29 +50,29 @@ Mind's published spec lags the code in places — where they disagree, the runni
 
 ## API Key Setup
 
-Ask the user to open `https://<instance>/settings/profile`, open **API keys** from the **Login** section, create a named key, and paste it into Codex only for the explicit setup step. Enneo shows the key **once** — afterwards only its last 6 characters are listed, so a key that is lost has to be replaced rather than recovered. Keys minted this way expire after a year.
+Use the `browser-jwt` skill for setup and key lifecycle details. Reuse the key already in `~/.enneo/env` before requesting any setup action.
 
-Prefer `enneo_store_token`; if the MCP tool is unavailable, store it in `~/.enneo/env` without printing the token:
+If it is missing, the user enters an existing key for the target instance in their **local editor**, keeping the secret out of chat and assistant tool arguments:
 
 ```bash
-mkdir -p ~/.enneo
-chmod 700 ~/.enneo
-cat > ~/.enneo/env <<'EOF'
 export ENNEO_INSTANCE="<instance-hostname>"
-export ENNEO_TOKEN="<api-key>"
-export ENNEO_TOKEN_EXPIRES_AT="<exp claim, or 4102444800 when the key has none>"
-EOF
-chmod 600 ~/.enneo/env
+export ENNEO_TOKEN="<existing-api-key>"
 ```
 
-Never display the token. If you need to show connection status, show only the instance, user id/email from `enneo_profile_me`, and whether a token exists. Listing, minting and withdrawing keys over the API is covered by the `browser-jwt` skill.
+The directory should have mode `700` and the file mode `600`. The user can prepare it locally with `mkdir -p ~/.enneo && chmod 700 ~/.enneo`, edit the file, then run `chmod 600 ~/.enneo/env`. `ENNEO_TOKEN_EXPIRES_AT` is optional; omit it for a key without an expiry, including any old value from a previous key.
+
+Only if no usable key exists should the user create a named key at `https://<instance>/settings/profile` under **Login → API keys** and save it directly into the local file. The value is shown once. Verify with `enneo_profile_me` after saving; no restart is needed. `enneo_store_token` remains available if the user explicitly asks to supply the secret through that tool.
+
+There is one active instance/key, shared by native tools, REST examples and other Enneo plugins using `~/.enneo/env`. Configuring the same hostname preserves it. Switching the hostname or using `reset: true` clears the local key and expiry without revoking it in Enneo. Reuse an existing key for the selected instance; there is no native per-instance cache.
+
+Never display the token or read the full credential file into assistant output. Show connection status using `enneo_profile_me` and its profile id. The `browser-jwt` skill also covers migrating an existing key from the legacy `browser-tokens.json` file without reissuing it.
 
 ## Safety
 
 - Read-only operations are OK without extra confirmation.
 - Before POST, PATCH, PUT, or DELETE, explain the exact change and ask for explicit confirmation.
 - Summarize customer data instead of dumping raw PII unless the user asks for raw data.
-- A `401` means the key is expired or was withdrawn — mint a new one. A `403` means the key is fine but the profile lacks that permission, or a feature flag has the endpoint switched off for the instance; re-authenticating will not help.
+- For `401`, check that the intended instance and key are selected. An expired or revoked key needs another valid key, chosen or created by the user; do not mint one automatically. A `403` indicates a permission or feature restriction; reissuing a key will not help.
 - `X-Enneo-On-Behalf-Of: {profileId}` names the human a machine account is acting for. Mind evaluates permissions as that person and auth records them against the key; it grants nothing on its own.
 
 ## Routing

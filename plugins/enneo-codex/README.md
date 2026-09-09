@@ -8,7 +8,7 @@ This is the Codex Marketplace variant of Enneo's Claude Code plugin.
 
 - Codex installed
 - Access to an Enneo instance, for example `yourcompany.enneo.ai`
-- A browser where you can sign in to that Enneo instance
+- An existing API key, or browser access to Profile Settings to create one
 - Node.js 18 or newer
 
 ## Installation
@@ -39,15 +39,26 @@ The broader platform coverage is provided by Codex skills and REST examples for 
 
 ## Auth
 
-Flow:
+Native tools and REST examples reuse one active instance/key from `~/.enneo/env`. There is no OAuth setup or automatic key renewal.
 
-1. Run `enneo_configure` with the instance hostname.
-2. Open `https://<instance>/settings/profile`.
-3. Open **API keys** from the **Login** section, create a named key, and copy it. Enneo shows the value only once.
-4. Ask Codex to store it for the Enneo Codex plugin. Codex will use `enneo_store_token`.
-5. Run `enneo_profile_me` to verify the connection.
+1. Run `enneo_configure` with the instance hostname, without `reset`.
+2. Run `enneo_profile_me`. If a working key is already stored, setup is complete.
+3. If the key is missing, enter an **existing key for that instance** in `~/.enneo/env` using your local editor:
 
-Credentials are stored in `~/.enneo/env` with mode `600`. Tokens must not be printed or pasted into normal chat after setup.
+   ```bash
+   export ENNEO_INSTANCE="demo.enneo.ai"
+   export ENNEO_TOKEN="<existing-api-key>"
+   ```
+
+   Create the directory if needed and set permissions locally: `mkdir -p ~/.enneo && chmod 700 ~/.enneo`, then `chmod 600 ~/.enneo/env` after saving. `ENNEO_TOKEN_EXPIRES_AT` is optional; omit it for a key with no expiry and remove any old expiry value.
+4. Only if you have no usable key, open `https://<instance>/settings/profile`, then **Login → API keys**, create a named key, and copy it directly into the local file. Enneo shows the value once.
+5. Run `enneo_profile_me` again after saving. No restart is needed.
+
+Keep secrets out of chat, assistant tool arguments and shell history. `enneo_store_token` remains available only if you explicitly choose to provide the key through that tool.
+
+Selecting the same instance preserves its key. Switching instances or using `reset: true` clears the key and expiry in the shared file; it does not revoke the key in Enneo. Re-add an existing key for the selected instance. There is no native per-instance key cache.
+
+If an older installation stored a usable key in `~/.enneo/browser-tokens.json`, copy the matching origin's key into `~/.enneo/env` with your local editor once. A new key is not required solely to migrate it.
 
 ## Usage Examples
 

@@ -1,15 +1,14 @@
 ---
 name: browser-jwt
-description: Obtain, store or revoke an Enneo API key (JWT) for a signed-in instance — required before any curl-based Enneo API call; supports multiple instances.
+description: Reuse, set up, list or revoke an Enneo API key (JWT). Native tools and REST calls share one active instance in ~/.enneo/env.
 ---
 
-# Enneo API Key (Browser JWT)
+# Enneo API Key
 
 ## Trigger
 
 Use when:
-- The user needs a token for an Enneo instance they are signed into in their browser.
-- Juggling tokens for **multiple** Enneo instances.
+- The user needs to connect to an Enneo instance or switch the active instance.
 - An Enneo API call returns `401` / `403`, or the cached token is expired, revoked or missing.
 - The user wants to list or withdraw the keys on their account.
 - User phrases: "unauthorized", "token expired", "refresh jwt", "new api key", "how do I auth to `<instance>`".
@@ -17,7 +16,7 @@ Use when:
 ## Prerequisites
 
 1. **Codex** with this plugin loaded.
-2. A browser where the user is signed in to the target Enneo instance.
+2. An existing API key for the target instance, or browser access to Profile Settings to create one if needed.
 
 ## What an Enneo API key is
 
@@ -28,81 +27,39 @@ A signed JWT whose payload carries `userId` and a per-token `jti`. Enneo keeps o
 - Withdrawing a key takes effect immediately; every call with it fails from that moment.
 - Keys are named, so a name that says where the key lives ("laptop — Codex") is worth asking for.
 
-## Storage
+## Storage and reuse
 
-Primary storage is `~/.enneo/env`, mode `600`, because the bundled MCP server and REST examples both read it:
+Native MCP tools and REST examples read the same `~/.enneo/env` file (mode `600`):
 
 ```bash
 export ENNEO_INSTANCE="demo.enneo.ai"
-export ENNEO_TOKEN="eyJ..."
-export ENNEO_TOKEN_EXPIRES_AT="1793923200"
+export ENNEO_TOKEN="<existing-api-key>"
 ```
 
-Prefer the `enneo_store_token` MCP tool for writing it — it keeps the file's shape and permissions right without the token passing through a shell command.
+There is **one active instance and key**, shared with other Enneo plugins using this file. The server reads it on each request and reuses the key across calls and restarts. It does not open a browser, perform OAuth, mint keys, or renew them automatically.
 
-Optional multi-instance cache: `~/.enneo/browser-tokens.json`, mode `600`, keyed by origin:
+`ENNEO_TOKEN_EXPIRES_AT` is optional metadata in epoch seconds. Omit it when the key has no `exp`; remove any previous value when replacing such a key. The API checks expiry and revocation. Do not invent a future expiry or replace a working key proactively.
 
-```json
-{
-  "https://demo.enneo.ai": {
-    "token": "eyJ...",
-    "exp": 1793923200,
-    "userId": 1,
-    "issuedAt": "2026-04-23T10:00:00Z"
-  },
-  "https://another-instance.enneo.ai": { "...": "..." }
-}
-```
-
-- `exp` is the `exp` claim decoded from the JWT payload (base64url middle segment), or `null` when the key does not expire.
-- Refresh proactively when `exp` is set and `exp - now < 86400` (24 h). A `null` `exp` never triggers a refresh; write a far-future `ENNEO_TOKEN_EXPIRES_AT` in that case so the MCP server does not treat the key as stale.
-- Atomic write (tmp + rename), mode `600`.
-- Never `cat` or print the file / full token. Mask as `eyJ…<last-6>` in responses — the last 6 characters are what Enneo itself shows, so they identify a key without exposing one.
+Never read the full file or key into assistant output. Show connection status using `enneo_profile_me`. Use `enneo_store_token` only when the user explicitly chooses to supply a secret through that tool; manual local entry is the primary setup path.
 
 ## Flow
 
-1. **Resolve origin** from the user's request (e.g. `demo.enneo.ai` → `https://demo.enneo.ai`).
-2. **Cache check.** Read `~/.enneo/browser-tokens.json` (create `{}` if missing). If the origin record has `exp == null`, or `exp - now > 86400`, skip to step 4.
-3. **Ask the user to mint a key in the Enneo UI** and paste it here:
+1. Resolve the instance hostname from the user's request, then call `enneo_configure` without `reset`. Selecting the same instance preserves its stored key.
+2. Call `enneo_profile_me` to reuse and verify the key already in `~/.enneo/env`. A successful call completes setup; do not ask for another key.
+3. If the key is missing, ask the user to add an **existing key for that instance** to `~/.enneo/env` using their local editor, with the format above. The directory should have mode `700` and the file mode `600`. Keep the secret out of chat, assistant tool arguments, and shell history.
+4. Only if no usable key is available, ask the user to open `https://<instance>/settings/profile`, then **Login → API keys**, and create a named key. They copy the value directly into their local file. If they are signed out, they sign in themselves. A missing create button may mean the `createApiToken` permission is unavailable; an administrator can issue the key instead.
+5. After the user saves the file, call `enneo_profile_me` again. No restart is needed.
 
-   > Open `<origin>/settings/profile` in your already-authenticated browser. In the **Login** section, open **API keys** — it slides out on the right. Create a key, give it a name you will recognise later, and paste the value here. Enneo shows it only once.
+If a previous installation stored a usable key in `~/.enneo/browser-tokens.json`, the user can copy the matching origin's key into `~/.enneo/env` once with their local editor. Do not read that legacy file into the assistant or make the user issue a replacement solely to migrate it.
 
-   If they are not signed in, ask them to sign in to `<origin>` first; do not attempt to log them in yourself. Creating a key on one's own profile needs the `createApiToken` permission — if the panel offers no create button, that permission is missing and an administrator has to issue the key instead.
-4. **Decode and store.** Decode the pasted JWT's payload for `exp` and `userId`, then write `~/.enneo/env` for the active instance and merge into `~/.enneo/browser-tokens.json`, preserving other origins:
+Selecting a different instance or passing `reset: true` clears the key and expiry from `~/.enneo/env`; it does not revoke the key in Enneo. Re-add an existing key for the selected instance locally. There is no native per-instance key cache. Never send a key belonging to another instance.
 
-   ```bash
-   ORIGIN="https://demo.enneo.ai"
-   INSTANCE="demo.enneo.ai"
-   TOKEN="eyJ..."        # the key the user pasted
-   EXP=$(node -p "JSON.parse(Buffer.from(process.argv[1].split('.')[1],'base64url')).exp ?? null" "$TOKEN")
-   USERID=$(node -p "JSON.parse(Buffer.from(process.argv[1].split('.')[1],'base64url')).userId ?? null" "$TOKEN")
-   IAT=$(date -u +%FT%TZ)
+For REST calls, load the same file without printing its contents:
 
-   mkdir -p ~/.enneo
-   chmod 700 ~/.enneo
-   {
-     printf 'export ENNEO_INSTANCE="%s"\n' "$INSTANCE"
-     printf 'export ENNEO_TOKEN="%s"\n' "$TOKEN"
-     printf 'export ENNEO_TOKEN_EXPIRES_AT="%s"\n' "${EXP:-4102444800}"
-   } > ~/.enneo/env
-   chmod 600 ~/.enneo/env
-
-   [ -f ~/.enneo/browser-tokens.json ] || { echo '{}' > ~/.enneo/browser-tokens.json && chmod 600 ~/.enneo/browser-tokens.json; }
-   jq --arg o "$ORIGIN" --arg t "$TOKEN" --argjson exp "$EXP" --argjson uid "$USERID" --arg iat "$IAT" \
-      '.[$o] = {token: $t, exp: $exp, userId: $uid, issuedAt: $iat}' \
-      ~/.enneo/browser-tokens.json > ~/.enneo/browser-tokens.json.tmp-$$ \
-      && mv ~/.enneo/browser-tokens.json.tmp-$$ ~/.enneo/browser-tokens.json
-   chmod 600 ~/.enneo/browser-tokens.json
-   ```
-
-5. **Use the token:**
-
-   ```bash
-   . ~/.enneo/env
-   curl -s "https://${ENNEO_INSTANCE}/api/mind/profile" -H "Authorization: Bearer ${ENNEO_TOKEN}"
-   ```
-
-   `enneo_profile_me` does the same check through the MCP server and is the preferred way to confirm a token works.
+```bash
+. ~/.enneo/env
+curl -s "https://${ENNEO_INSTANCE}/api/mind/profile" -H "Authorization: Bearer ${ENNEO_TOKEN}"
+```
 
 ## Managing keys over the API
 
@@ -117,7 +74,7 @@ AUTH="Authorization: Bearer ${ENNEO_TOKEN}"
 curl -s "${BASE}/jwt/{profileId}/keys" -H "${AUTH}" \
   | jq '.keys[] | {id, name, tokenSuffix, createdAt, expiresAt, lastUsedAt, revokedAt, revokedBy, issuedBy}'
 
-# Mint a named key (REQUIRES CONFIRMATION) — the response is the only time the value is shown
+# Mint a named key (REQUIRES CONFIRMATION; USER RUNS LOCALLY) — output contains the secret
 curl -s -X POST "${BASE}/jwt/{profileId}" \
   -H "${AUTH}" -H "Content-Type: application/json" \
   -d '{"name": "laptop — Codex"}' | jq -r '.token'
@@ -125,6 +82,8 @@ curl -s -X POST "${BASE}/jwt/{profileId}" \
 # Withdraw a key (REQUIRES CONFIRMATION) — effective immediately
 curl -s -X DELETE "${BASE}/jwt/{profileId}/keys/{keyId}" -H "${AUTH}"
 ```
+
+The create command above is for the user to run locally; do not run it through assistant tools, because it prints the new secret.
 
 `lastUsedAt` and `revokedAt` are the two fields worth reading when debugging a `401`: a key that was never used points at a copy/paste error, one with `revokedAt` set was withdrawn.
 
@@ -134,7 +93,7 @@ Enneo honours `X-Enneo-On-Behalf-Of: {profileId}` on its API. Mind evaluates the
 
 ## Edge cases
 
-- **Multiple accounts per origin.** One token per origin; switching overwrites. Cached `userId` reflects the current account.
+- **Switching accounts.** Replace the active key locally and verify the new profile. The previous key remains valid until revoked or expired.
 - **Not signed in.** The user cannot reach Profile Settings without signing in — ask them to sign in first. Do not retry automatically.
-- **`401` on a token that used to work.** The key was withdrawn, or it expired. Check the key list for `revokedAt` / `expiresAt`; both mean minting a new one, not retrying.
+- **`401`.** Confirm the intended instance and key were selected. If it is expired or revoked, the user can choose another existing valid key or create a replacement. Do not retry or mint keys automatically; use the UI to inspect keys if API authentication no longer works.
 - **`403` where `401` was expected.** The token is valid but the profile lacks the permission for that endpoint — a different failure, and re-minting will not fix it.

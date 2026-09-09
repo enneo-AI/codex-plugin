@@ -1,4 +1,4 @@
-import { loadEnv, updateEnv } from "../storage.js";
+import { loadEnv, updateEnv, normalizeInstance } from "../storage.js";
 import { text, type Tool } from "./index.js";
 
 function jwtExp(token: string): number | undefined {
@@ -20,7 +20,7 @@ function mask(token: string): string {
 export const storeToken: Tool = {
   name: "enneo_store_token",
   description:
-    "Store an Enneo API key/JWT copied from Profile Settings > Login. Never prints the full token back.",
+    "Store an Enneo API key/JWT only when the user explicitly asks to supply it through this tool. Prefer user entry in ~/.enneo/env so the secret stays out of chat and tool arguments. Never prints the full token back.",
   inputSchema: {
     type: "object",
     properties: {
@@ -45,7 +45,7 @@ export const storeToken: Tool = {
 
     const current = await loadEnv();
     const rawInstance = args.instance ? String(args.instance) : current.instance;
-    const instance = rawInstance?.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const instance = rawInstance ? normalizeInstance(rawInstance) : undefined;
     if (!instance) {
       throw new Error("No Enneo instance configured. Run enneo_configure first or pass instance.");
     }
@@ -54,7 +54,7 @@ export const storeToken: Tool = {
     }
 
     const expires_at =
-      typeof args.expiresAt === "number" ? args.expiresAt : jwtExp(token) ?? current.expires_at;
+      typeof args.expiresAt === "number" ? args.expiresAt : jwtExp(token);
     await updateEnv({ instance, access_token: token, expires_at });
     return text(
       `Stored Enneo API key for ${instance} at ~/.enneo/env (mode 600). Token: ${mask(token)}${

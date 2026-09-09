@@ -6,24 +6,23 @@ interface ApiOptions {
   body?: unknown;
 }
 
-async function getInstanceOrThrow(): Promise<string> {
-  const { instance } = await loadEnv();
+export async function enneoApi<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const { instance, access_token: token } = await loadEnv();
   if (!instance) {
     throw new Error(
       "Enneo instance not configured. Call the `enneo_configure` tool first with e.g. {\"instance\": \"demo.enneo.ai\"}.",
     );
   }
-  return instance;
-}
-
-export async function enneoApi<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
-  const instance = await getInstanceOrThrow();
-  const { access_token: token } = await loadEnv();
+  if (!/^[a-z0-9.-]+$/.test(instance)) {
+    throw new Error("Invalid instance hostname in ~/.enneo/env. Run enneo_configure with the intended hostname.");
+  }
   if (!token) {
     throw new Error(
-      "Enneo API key is missing. Open https://" +
+      "Enneo API key is missing. Add an existing key for " +
         instance +
-        "/settings/profile, copy the API key from the Login section, then ask Codex to store it for the Enneo Codex plugin.",
+        " to ENNEO_TOKEN in ~/.enneo/env using your local editor (mode 600), then retry. " +
+        "If you have no usable key, create one at https://" + instance +
+        "/settings/profile under Login > API keys. Keep the key out of chat and tool arguments.",
     );
   }
 

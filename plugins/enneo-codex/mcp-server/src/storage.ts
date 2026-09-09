@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 /**
  * Unified credential store at ~/.enneo/env — a shell-sourceable file shared
@@ -29,6 +30,10 @@ const KEY_MAP = {
   expires_at: "ENNEO_TOKEN_EXPIRES_AT",
 } as const;
 
+export function normalizeInstance(instance: string): string {
+  return instance.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "").toLowerCase();
+}
+
 export async function loadEnv(): Promise<EnneoEnv> {
   let raw: string;
   try {
@@ -47,7 +52,7 @@ export async function loadEnv(): Promise<EnneoEnv> {
     values[key] = value;
   }
   const env: EnneoEnv = {
-    instance: values[KEY_MAP.instance] || undefined,
+    instance: normalizeInstance(values[KEY_MAP.instance] ?? "") || undefined,
     access_token: values[KEY_MAP.access_token] || undefined,
   };
   const exp = values[KEY_MAP.expires_at];
@@ -63,10 +68,13 @@ export async function saveEnv(env: EnneoEnv): Promise<void> {
   if (env.expires_at) lines.push(`export ${KEY_MAP.expires_at}="${env.expires_at}"`);
   const content = lines.join("\n") + "\n";
 
-  // Atomic write: tmp + rename, mode 600.
-  const tmp = `${ENV_FILE}.tmp-${process.pid}`;
-  await fs.writeFile(tmp, content, { mode: 0o600 });
-  await fs.rename(tmp, ENV_FILE);
+  const tmp = `${ENV_FILE}.tmp-${randomUUID()}`;
+  try {
+    await fs.writeFile(tmp, content, { mode: 0o600 });
+    await fs.rename(tmp, ENV_FILE);
+  } finally {
+    await fs.rm(tmp, { force: true });
+  }
 }
 
 export async function updateEnv(patch: Partial<EnneoEnv>): Promise<EnneoEnv> {
@@ -74,18 +82,6 @@ export async function updateEnv(patch: Partial<EnneoEnv>): Promise<EnneoEnv> {
   const merged = { ...current, ...patch };
   await saveEnv(merged);
   return merged;
-}
-
-export async function clearTokens(): Promise<void> {
-  const current = await loadEnv();
-  delete current.access_token;
-  delete current.expires_at;
-  await saveEnv(current);
-}
-
-export function isExpired(expiresAt: number | undefined, skewSeconds = 30): boolean {
-  if (!expiresAt) return true;
-  return Date.now() / 1000 + skewSeconds >= expiresAt;
 }
 
 function shellEscape(value: string): string {

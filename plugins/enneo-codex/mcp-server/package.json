@@ -13,6 +13,7 @@
     "bundle": "npm run build && esbuild dist/index.js --bundle --platform=node --format=esm --target=node18 --outfile=bundle/index.js",
     "dev": "tsc --watch",
     "start": "node bundle/index.js",
+    "test": "npm run bundle && node --test test/*.test.mjs",
     "prepare": "npm run bundle"
   },
   "dependencies": {
